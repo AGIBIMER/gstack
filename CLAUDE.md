@@ -809,6 +809,20 @@ Three layers of knowledge: tried-and-true (Layer 1), new-and-popular (Layer 2),
 first-principles (Layer 3). Prize Layer 3 above all. See ETHOS.md for the full
 builder philosophy.
 
+## Cross-project learnings (pyRevit 6.0/6.1 study)
+
+When evaluating skills for domain-specific projects (like Revit plugins), these patterns
+from pyRevit 6.0/6.1 inform how skills should handle version-sensitive codebases:
+
+- **Backend abstraction:** Skills reviewing code should recognize interface-based version
+  isolation patterns (e.g., `IStyleProvider<T>`, `IAuditBackend`) and not suggest inlining them
+- **Proactive version guards:** `/review` and `/qa` should flag unguarded API calls that
+  only exist in newer framework versions (Revit 2026+, .NET 10, etc.)
+- **Localization completeness:** `/design-review` should check that user-facing strings
+  route through localization services, not hardcoded literals
+- **Load order dependencies:** When reviewing config-driven systems, check for implicit
+  initialization ordering that could break when features are toggled independently
+
 ## Local plans
 
 Contributors can store long-range vision docs and design documents in `~/.gstack-dev/plans/`.
