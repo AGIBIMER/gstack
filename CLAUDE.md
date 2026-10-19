@@ -823,6 +823,38 @@ from pyRevit 6.0/6.1 inform how skills should handle version-sensitive codebases
 - **Load order dependencies:** When reviewing config-driven systems, check for implicit
   initialization ordering that could break when features are toggled independently
 
+## Cross-project learnings (pyRevit 7.0 study)
+
+pyRevit 7.0 (Oct 2026) shipped a native in-process agent/MCP runtime that lets any
+MCP-capable coding agent run arbitrary Python against a live Revit document. Its safety
+model is directly reusable for any skill that lets an agent act on a live system (a
+running app, a production database, a user's desktop via computer-use):
+
+- **Few generic tools, not a CRUD catalog.** Instead of one tool per operation, pyRevit
+  exposes a small set — `run_query` (read-only), `run_modify` (mutating), `inspect_elements`,
+  `get_context`, `get_run` — and lets the agent write arbitrary code against them. Skills
+  that are tempted to enumerate dozens of narrow tool wrappers should consider whether a
+  smaller "write a program against this API" surface serves the same cases with less
+  maintenance.
+- **Ask/keep/discard, not a code-level sandbox.** The safety boundary isn't restricting
+  what the agent *can* run — `run_modify` has full API access, same trust level as a human
+  script. The boundary is a human-approval gate before anything commits, a single atomic
+  undo entry on approval, and immediate full rollback on discard. When a skill (`/ship`,
+  `/land-and-deploy`, anything with a fix-loop) makes live changes, prefer this pattern
+  over trying to restrict the action space.
+- **Guarded runs during execution.** While a mutating run is in flight: auto-rollback on
+  failure, block other saves/exports/syncs, enforce a timeout. This generalizes to any
+  skill wrapping a long-running mutating operation — don't let other work interleave with
+  an uncommitted change.
+- **Read-only vs mutating is a first-class split, not an afterthought.** `run_query` is
+  documented as never able to mutate the model at all — it's a structural guarantee, not a
+  convention the caller has to remember. Skills with both audit and fix modes
+  (`/qa-only` vs `/design-review`'s fix loop) should keep that split just as hard.
+- **Admin lockdown was explicitly NOT shipped at launch** — pyRevit 7's own docs list "an
+  admin lock for the `[agent]` settings" as an open question, not yet implemented. Any
+  skill or tool that exposes agent-facing write access to an enterprise system should build
+  the admin-lock/permission-gate in from day one rather than retrofitting it later.
+
 ## Local plans
 
 Contributors can store long-range vision docs and design documents in `~/.gstack-dev/plans/`.
